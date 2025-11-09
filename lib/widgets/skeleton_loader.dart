@@ -8,78 +8,91 @@ class PokemonCardSkeleton extends StatelessWidget {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Skeleton para el número
-            Container(
-              width: 40,
-              height: 12,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(4),
-              ),
-            ),
-            const SizedBox(height: 8),
-
-            // Skeleton para la imagen
-            Center(
-              child: Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(40),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Skeleton para el nombre
-            Center(
-              child: Container(
-                width: 80,
-                height: 16,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-
-            // Skeleton para los tipos
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 40,
-                  height: 20,
+      child: Container(
+        // Añadir constraints para que tenga la misma altura
+        constraints: const BoxConstraints(
+          minHeight: 180, // Altura mínima similar a PokemonCard
+        ),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          color: Colors.grey[100],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(12), // Reducir padding de 16 a 12
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment:
+                MainAxisAlignment.spaceBetween, // Distribuir espacio
+            children: [
+              // Skeleton para el número (alineado a la derecha)
+              Align(
+                alignment: Alignment.centerRight,
+                child: Container(
+                  width: 30, // Reducir ancho
+                  height: 10, // Reducir altura
                   decoration: BoxDecoration(
                     color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(4),
                   ),
                 ),
-                const SizedBox(width: 4),
-                Container(
-                  width: 40,
-                  height: 20,
+              ),
+
+              // Skeleton para la imagen (centrada)
+              Center(
+                child: Container(
+                  width: 70, // Reducir tamaño
+                  height: 70,
                   decoration: BoxDecoration(
                     color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(35),
                   ),
                 ),
-              ],
-            ),
-          ],
+              ),
+
+              // Skeleton para el nombre (centrado)
+              Center(
+                child: Container(
+                  width: 70, // Reducir ancho
+                  height: 14, // Reducir altura
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ),
+
+              // Skeleton para los tipos (centrados)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 36, // Reducir ancho
+                    height: 18, // Reducir altura
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Container(
+                    width: 36,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
+// Mantén tu PokemonDetailSkeleton como está...
 class PokemonDetailSkeleton extends StatelessWidget {
   const PokemonDetailSkeleton({Key? key}) : super(key: key);
 

@@ -1,18 +1,15 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/pokemon.dart';
+import '../models/pokemon_evolution.dart';
 
 class PokemonService {
   static const String baseUrl = 'https://pokeapi.co/api/v2';
 
-  Future<List<Pokemon>> getPokemonsByGeneration(int generation) async {
+  Future<List<Pokemon>> getPokemons({int limit = 50, int offset = 0}) async {
     try {
-      int startId = _getGenerationStartId(generation);
-      int endId = _getGenerationEndId(generation);
-      int limit = endId - startId + 1;
-
       final response = await http.get(
-        Uri.parse('$baseUrl/pokemon?offset=${startId - 1}&limit=$limit'),
+        Uri.parse('$baseUrl/pokemon?limit=$limit&offset=$offset'),
       );
 
       if (response.statusCode == 200) {
@@ -21,22 +18,53 @@ class PokemonService {
 
         List<Pokemon> pokemons = [];
         for (var result in results) {
-          final pokemon = await getPokemonDetail(result['url']);
-          pokemons.add(pokemon);
+          try {
+            final pokemon = await getPokemonDetail(result['url']);
+            pokemons.add(pokemon);
+          } catch (e) {
+            print('Error loading Pokémon from ${result['url']}: $e');
+            continue;
+          }
         }
 
         return pokemons;
       } else {
-        throw Exception('Failed to load pokemons');
+        throw Exception('Failed to load pokemons: ${response.statusCode}');
       }
     } catch (e) {
       throw Exception('Error: $e');
     }
   }
 
+  Future<List<Pokemon>> getPokemonsByGeneration(int generation) async {
+    try {
+      final startId = _getGenerationStartId(generation);
+      final endId = _getGenerationEndId(generation);
+
+      print('Loading generation $generation: Pokémon $startId to $endId');
+
+      List<Pokemon> pokemons = [];
+      for (int id = startId; id <= endId; id++) {
+        try {
+          final pokemon = await getPokemonById(id);
+          pokemons.add(pokemon);
+          print('Loaded Pokémon #$id: ${pokemon.name}');
+        } catch (e) {
+          print('Error loading Pokémon #$id: $e');
+          continue;
+        }
+      }
+
+      print(
+          'Successfully loaded ${pokemons.length} Pokémon for generation $generation');
+      return pokemons;
+    } catch (e) {
+      throw Exception('Error loading generation $generation: $e');
+    }
+  }
+
   Future<List<PokemonEvolution>> getPokemonEvolutions(int pokemonId) async {
     try {
-      // Primero obtener la cadena de evolución
       final speciesResponse = await http.get(
         Uri.parse('$baseUrl/pokemon-species/$pokemonId'),
       );
@@ -45,86 +73,52 @@ class PokemonService {
       final speciesData = json.decode(speciesResponse.body);
       final evolutionChainUrl = speciesData['evolution_chain']['url'];
 
-      // Obtener la cadena de evolución
       final evolutionResponse = await http.get(Uri.parse(evolutionChainUrl));
       if (evolutionResponse.statusCode != 200) return [];
 
       final evolutionData = json.decode(evolutionResponse.body);
-      return _parseEvolutionChain(evolutionData['chain']);
+      final chain = evolutionData['chain'];
+
+      return _parseEvolutionChain(chain);
     } catch (e) {
       return [];
     }
   }
 
   List<PokemonEvolution> _parseEvolutionChain(Map<String, dynamic> chain) {
-    List<PokemonEvolution> evolutions = [];
+    final evolutions = <PokemonEvolution>[];
 
-    void traverseChain(Map<String, dynamic> currentChain, String previousName) {
-      final currentPokemon = currentChain['species'];
-      final currentName = currentPokemon['name'];
-      final currentId = int.parse(
-        currentPokemon['url'].split('/').where((s) => s.isNotEmpty).last,
+    var current = chain;
+    while (current['evolves_to'] != null &&
+        (current['evolves_to'] as List).isNotEmpty) {
+      final nextEvolution = (current['evolves_to'] as List).first;
+      final evolutionDetails = nextEvolution['evolution_details'] != null &&
+              (nextEvolution['evolution_details'] as List).isNotEmpty
+          ? (nextEvolution['evolution_details'] as List).first
+          : null;
+
+      final evolution = PokemonEvolution(
+        name: (nextEvolution['species']['name'] as String?) ?? '',
+        id: _extractIdFromUrl(
+            (nextEvolution['species']['url'] as String?) ?? ''),
+        method: (evolutionDetails?['trigger']['name'] as String?) ?? '',
+        level: (evolutionDetails?['min_level'] as int?) ?? 0,
+        item: (evolutionDetails?['item']?['name'] as String?) ?? '',
       );
 
-      // Si no es el Pokémon inicial, añadir como evolución
-      if (previousName.isNotEmpty) {
-        String method = '';
-        int level = 0;
-        String item = '';
-
-        if (currentChain['evolution_details'] != null &&
-            currentChain['evolution_details'].isNotEmpty) {
-          final details = currentChain['evolution_details'][0];
-          method = details['trigger']['name'] ?? '';
-          level = details['min_level'] ?? 0;
-          item = details['item'] != null ? details['item']['name'] : '';
-        }
-
-        evolutions.add(
-          PokemonEvolution(
-            name: currentName,
-            id: currentId,
-            method: method,
-            level: level,
-            item: item,
-          ),
-        );
-      }
-
-      // Recorrer evoluciones siguientes
-      if (currentChain['evolves_to'] != null) {
-        for (var evolution in currentChain['evolves_to']) {
-          traverseChain(evolution, currentName);
-        }
-      }
+      evolutions.add(evolution);
+      current = nextEvolution;
     }
 
-    traverseChain(chain, '');
     return evolutions;
   }
 
-  Future<List<Pokemon>> getPokemons({int limit = 50}) async {
+  int _extractIdFromUrl(String url) {
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/pokemon?limit=$limit'),
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final results = data['results'] as List;
-
-        List<Pokemon> pokemons = [];
-        for (var result in results) {
-          final pokemon = await getPokemonDetail(result['url']);
-          pokemons.add(pokemon);
-        }
-
-        return pokemons;
-      } else {
-        throw Exception('Failed to load pokemons');
-      }
+      final segments = url.split('/');
+      return int.parse(segments[segments.length - 2]);
     } catch (e) {
-      throw Exception('Error: $e');
+      return 0;
     }
   }
 
@@ -136,10 +130,11 @@ class PokemonService {
         final data = json.decode(response.body);
         return Pokemon.fromJson(data);
       } else {
-        throw Exception('Failed to load pokemon detail');
+        throw Exception(
+            'Failed to load pokemon detail: ${response.statusCode}');
       }
     } catch (e) {
-      throw Exception('Error: $e');
+      throw Exception('Error loading Pokémon detail: $e');
     }
   }
 
@@ -197,7 +192,6 @@ class PokemonService {
     }
   }
 
-  // Obtener todas las generaciones disponibles
   List<int> getAvailableGenerations() {
     return [1, 2, 3, 4, 5, 6, 7, 8, 9];
   }

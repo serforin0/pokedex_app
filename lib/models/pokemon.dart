@@ -1,4 +1,6 @@
-class Pokemon {
+import 'package:equatable/equatable.dart';
+
+class Pokemon extends Equatable {
   final int id;
   final String name;
   final List<String> types;
@@ -6,18 +8,18 @@ class Pokemon {
   final double height;
   final double weight;
   final List<String> abilities;
-  final Map<String, int> stats;
   final String species;
-  final String description;
-  final int generation;
-  final List<String> weaknesses;
-  final String habitat;
-  final String growthRate;
   final int baseExperience;
-  final List<PokemonEvolution> evolutions;
-  final String evolutionChainUrl;
+  final String growthRate;
+  final int hp;
+  final int attack;
+  final int defense;
+  final int specialAttack;
+  final int specialDefense;
+  final int speed;
+  final List<String> weaknesses;
 
-  Pokemon({
+  const Pokemon({
     required this.id,
     required this.name,
     required this.types,
@@ -25,41 +27,37 @@ class Pokemon {
     required this.height,
     required this.weight,
     required this.abilities,
-    required this.stats,
     required this.species,
-    required this.description,
-    required this.generation,
-    required this.weaknesses,
-    required this.habitat,
-    required this.growthRate,
     required this.baseExperience,
-    required this.evolutions,
-    required this.evolutionChainUrl,
+    required this.growthRate,
+    required this.hp,
+    required this.attack,
+    required this.defense,
+    required this.specialAttack,
+    required this.specialDefense,
+    required this.speed,
+    required this.weaknesses,
   });
 
+  int get totalStats =>
+      hp + attack + defense + specialAttack + specialDefense + speed;
+
   factory Pokemon.fromJson(Map<String, dynamic> json) {
-    // Obtener tipos
-    List<String> types = [];
-    for (var type in json['types']) {
-      types.add(type['type']['name']);
+    // DEBUG: Ver estructura de tipos
+    if (json['types'] != null) {
+      print('=== PARSING POKEMON TYPES ===');
+      print('Pokémon: ${json['name']} (#${json['id']})');
+      print('Raw types data: ${json['types']}');
     }
 
-    // Obtener habilidades
-    List<String> abilities = [];
-    for (var ability in json['abilities']) {
-      abilities.add(ability['ability']['name']);
-    }
+    final types = (json['types'] as List).map((type) {
+      final typeName = (type['type']['name'] as String).toLowerCase();
+      print('  - Type found: $typeName');
+      return typeName;
+    }).toList();
 
-    // Obtener estadísticas
-    Map<String, int> stats = {};
-    for (var stat in json['stats']) {
-      String statName = stat['stat']['name'];
-      int statValue = stat['base_stat'];
-      stats[statName] = statValue;
-    }
-
-    // Calcular debilidades basadas en tipos
-    List<String> weaknesses = _calculateWeaknesses(types);
+    print('Final types list: $types');
+    print('========================');
 
     return Pokemon(
       id: json['id'],
@@ -68,89 +66,107 @@ class Pokemon {
       imageUrl: json['sprites']['front_default'] ?? '',
       height: (json['height'] ?? 0) / 10.0,
       weight: (json['weight'] ?? 0) / 10.0,
-      abilities: abilities,
-      stats: stats,
-      species: json['species']['name'] ?? 'Unknown',
-      description: '',
-      generation: _getGeneration(json['id']),
-      weaknesses: weaknesses,
-      habitat: 'Unknown',
-      growthRate: 'Unknown',
+      abilities: (json['abilities'] as List)
+          .map((ability) => ability['ability']['name'] as String)
+          .toList(),
+      species: json['species']['name'] ?? '',
       baseExperience: json['base_experience'] ?? 0,
-      evolutions: [], // Inicialmente vacío
-      evolutionChainUrl: json['species']['url'] ?? '',
+      growthRate: 'medium',
+      hp: json['stats'][0]['base_stat'],
+      attack: json['stats'][1]['base_stat'],
+      defense: json['stats'][2]['base_stat'],
+      specialAttack: json['stats'][3]['base_stat'],
+      specialDefense: json['stats'][4]['base_stat'],
+      speed: json['stats'][5]['base_stat'],
+      weaknesses: _calculateWeaknesses(json['types']),
     );
   }
 
-  bool get hasEvolutions => evolutions.isNotEmpty;
-  bool get isFinalEvolution =>
-      evolutions.every((evolution) => evolution.method.isEmpty);
+  static List<String> _calculateWeaknesses(List<dynamic> types) {
+    final weaknesses = <String>[];
 
-  static int _getGeneration(int id) {
-    if (id <= 151) return 1;
-    if (id <= 251) return 2;
-    if (id <= 386) return 3;
-    if (id <= 493) return 4;
-    if (id <= 649) return 5;
-    if (id <= 721) return 6;
-    if (id <= 809) return 7;
-    if (id <= 905) return 8;
-    return 9;
-  }
+    for (var type in types) {
+      final typeName = (type['type']['name'] as String).toLowerCase();
 
-  static List<String> _calculateWeaknesses(List<String> types) {
-    Map<String, List<String>> typeWeaknesses = {
-      'normal': ['fighting'],
-      'fire': ['water', 'ground', 'rock'],
-      'water': ['electric', 'grass'],
-      'electric': ['ground'],
-      'grass': ['fire', 'ice', 'poison', 'flying', 'bug'],
-      'ice': ['fire', 'fighting', 'rock', 'steel'],
-      'fighting': ['flying', 'psychic', 'fairy'],
-      'poison': ['ground', 'psychic'],
-      'ground': ['water', 'grass', 'ice'],
-      'flying': ['electric', 'ice', 'rock'],
-      'psychic': ['bug', 'ghost', 'dark'],
-      'bug': ['fire', 'flying', 'rock'],
-      'rock': ['water', 'grass', 'fighting', 'ground', 'steel'],
-      'ghost': ['ghost', 'dark'],
-      'dragon': ['ice', 'dragon', 'fairy'],
-      'dark': ['fighting', 'bug', 'fairy'],
-      'steel': ['fire', 'fighting', 'ground'],
-      'fairy': ['poison', 'steel'],
-    };
-
-    Set<String> weaknesses = {};
-    for (String type in types) {
-      if (typeWeaknesses.containsKey(type)) {
-        weaknesses.addAll(typeWeaknesses[type]!);
+      switch (typeName) {
+        case 'fire':
+          weaknesses.addAll(['water', 'ground', 'rock']);
+          break;
+        case 'water':
+          weaknesses.addAll(['electric', 'grass']);
+          break;
+        case 'grass':
+          weaknesses.addAll(['fire', 'ice', 'poison', 'flying', 'bug']);
+          break;
+        case 'electric':
+          weaknesses.addAll(['ground']);
+          break;
+        case 'ice':
+          weaknesses.addAll(['fire', 'fighting', 'rock', 'steel']);
+          break;
+        case 'fighting':
+          weaknesses.addAll(['flying', 'psychic', 'fairy']);
+          break;
+        case 'poison':
+          weaknesses.addAll(['ground', 'psychic']);
+          break;
+        case 'ground':
+          weaknesses.addAll(['water', 'grass', 'ice']);
+          break;
+        case 'flying':
+          weaknesses.addAll(['electric', 'ice', 'rock']);
+          break;
+        case 'psychic':
+          weaknesses.addAll(['bug', 'ghost', 'dark']);
+          break;
+        case 'bug':
+          weaknesses.addAll(['fire', 'flying', 'rock']);
+          break;
+        case 'rock':
+          weaknesses.addAll(['water', 'grass', 'fighting', 'ground', 'steel']);
+          break;
+        case 'ghost':
+          weaknesses.addAll(['ghost', 'dark']);
+          break;
+        case 'dragon':
+          weaknesses.addAll(['ice', 'dragon', 'fairy']);
+          break;
+        case 'dark':
+          weaknesses.addAll(['fighting', 'bug', 'fairy']);
+          break;
+        case 'steel':
+          weaknesses.addAll(['fire', 'fighting', 'ground']);
+          break;
+        case 'fairy':
+          weaknesses.addAll(['poison', 'steel']);
+          break;
       }
     }
-    return weaknesses.toList();
+
+    return weaknesses.toSet().toList();
   }
 
-  int get hp => stats['hp'] ?? 0;
-  int get attack => stats['attack'] ?? 0;
-  int get defense => stats['defense'] ?? 0;
-  int get specialAttack => stats['special-attack'] ?? 0;
-  int get specialDefense => stats['special-defense'] ?? 0;
-  int get speed => stats['speed'] ?? 0;
-  int get totalStats =>
-      hp + attack + defense + specialAttack + specialDefense + speed;
-}
+  @override
+  List<Object> get props => [
+        id,
+        name,
+        types,
+        imageUrl,
+        height,
+        weight,
+        abilities,
+        species,
+        baseExperience,
+        growthRate,
+        hp,
+        attack,
+        defense,
+        specialAttack,
+        specialDefense,
+        speed,
+        weaknesses,
+      ];
 
-class PokemonEvolution {
-  final String name;
-  final int id;
-  final String method;
-  final int level;
-  final String item;
-
-  PokemonEvolution({
-    required this.name,
-    required this.id,
-    required this.method,
-    required this.level,
-    required this.item,
-  });
+  @override
+  bool get stringify => true;
 }
