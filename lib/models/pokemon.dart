@@ -1,3 +1,4 @@
+// lib/models/pokemon.dart (volver a la versión original)
 import 'package:equatable/equatable.dart';
 
 class Pokemon extends Equatable {
@@ -43,21 +44,9 @@ class Pokemon extends Equatable {
       hp + attack + defense + specialAttack + specialDefense + speed;
 
   factory Pokemon.fromJson(Map<String, dynamic> json) {
-    // DEBUG: Ver estructura de tipos
-    if (json['types'] != null) {
-      print('=== PARSING POKEMON TYPES ===');
-      print('Pokémon: ${json['name']} (#${json['id']})');
-      print('Raw types data: ${json['types']}');
-    }
-
     final types = (json['types'] as List).map((type) {
-      final typeName = (type['type']['name'] as String).toLowerCase();
-      print('  - Type found: $typeName');
-      return typeName;
+      return (type['type']['name'] as String).toLowerCase();
     }).toList();
-
-    print('Final types list: $types');
-    print('========================');
 
     return Pokemon(
       id: json['id'],
@@ -82,7 +71,12 @@ class Pokemon extends Equatable {
     );
   }
 
+  static List<String> calculateWeaknesses(List<dynamic> types) {
+    return _calculateWeaknesses(types);
+  }
+
   static List<String> _calculateWeaknesses(List<dynamic> types) {
+    // ... (mantener el mismo código)
     final weaknesses = <String>[];
 
     for (var type in types) {
@@ -144,6 +138,18 @@ class Pokemon extends Equatable {
     }
 
     return weaknesses.toSet().toList();
+  }
+
+  // ✅ Conversión a JSON (para guardar en Hive)
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'types': types,
+      'imageUrl': imageUrl,
+      'height': height,
+      'weight': weight,
+    };
   }
 
   @override

@@ -1,65 +1,172 @@
+// lib/services/pokemon_service.dart
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:connectivity_plus/connectivity_plus.dart';
 import '../models/pokemon.dart';
 import '../models/pokemon_evolution.dart';
+import 'local_storage_service.dart';
 
 class PokemonService {
   static const String baseUrl = 'https://pokeapi.co/api/v2';
+  final LocalStorageService _localStorage = LocalStorageService();
 
   Future<List<Pokemon>> getPokemons({int limit = 50, int offset = 0}) async {
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/pokemon?limit=$limit&offset=$offset'),
-      );
+      // Verificar conexión a internet
+      final connectivityResult = await Connectivity().checkConnectivity();
+      final bool isOnline = connectivityResult != ConnectivityResult.none;
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final results = data['results'] as List;
+      if (isOnline) {
+        // Modo online: obtener de API y guardar en cache
+        final response = await http.get(
+          Uri.parse('$baseUrl/pokemon?limit=$limit&offset=$offset'),
+        );
 
-        List<Pokemon> pokemons = [];
-        for (var result in results) {
-          try {
-            final pokemon = await getPokemonDetail(result['url']);
-            pokemons.add(pokemon);
-          } catch (e) {
-            print('Error loading Pokémon from ${result['url']}: $e');
-            continue;
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body);
+          final results = data['results'] as List;
+
+          List<Pokemon> pokemons = [];
+          for (var result in results) {
+            try {
+              final pokemon = await getPokemonDetail(result['url']);
+              pokemons.add(pokemon);
+            } catch (e) {
+              print('Error loading Pokémon from ${result['url']}: $e');
+              continue;
+            }
           }
-        }
 
-        return pokemons;
+          // Guardar en cache
+          await _localStorage.cachePokemons(pokemons);
+
+          return pokemons;
+        } else {
+          throw Exception('Failed to load pokemons: ${response.statusCode}');
+        }
       } else {
-        throw Exception('Failed to load pokemons: ${response.statusCode}');
+        // Modo offline: obtener del cache
+        print('Offline mode: Loading from cache');
+        final cachedPokemons = await _localStorage.getCachedPokemons();
+
+        // Filtrar y paginar los Pokémon cacheados
+        final startIndex = offset;
+        final endIndex = offset + limit;
+        if (startIndex < cachedPokemons.length) {
+          return cachedPokemons.sublist(
+              startIndex,
+              endIndex < cachedPokemons.length
+                  ? endIndex
+                  : cachedPokemons.length);
+        } else {
+          return [];
+        }
       }
     } catch (e) {
+      // Si hay error, intentar cargar del cache
+      print('Error loading Pokémon, trying cache: $e');
+      try {
+        final cachedPokemons = await _localStorage.getCachedPokemons();
+        if (cachedPokemons.isNotEmpty) {
+          return cachedPokemons.take(limit).toList();
+        }
+      } catch (cacheError) {
+        print('Cache also failed: $cacheError');
+      }
       throw Exception('Error: $e');
     }
   }
 
   Future<List<Pokemon>> getPokemonsByGeneration(int generation) async {
     try {
-      final startId = _getGenerationStartId(generation);
-      final endId = _getGenerationEndId(generation);
+      final connectivityResult = await Connectivity().checkConnectivity();
+      final bool isOnline = connectivityResult != ConnectivityResult.none;
 
-      print('Loading generation $generation: Pokémon $startId to $endId');
+      if (isOnline) {
+        // Modo online
+        final startId = _getGenerationStartId(generation);
+        final endId = _getGenerationEndId(generation);
 
-      List<Pokemon> pokemons = [];
-      for (int id = startId; id <= endId; id++) {
-        try {
-          final pokemon = await getPokemonById(id);
-          pokemons.add(pokemon);
-          print('Loaded Pokémon #$id: ${pokemon.name}');
-        } catch (e) {
-          print('Error loading Pokémon #$id: $e');
-          continue;
+        print('Loading generation $generation: Pokémon $startId to $endId');
+
+        List<Pokemon> pokemons = [];
+        for (int id = startId; id <= endId; id++) {
+          try {
+            final pokemon = await getPokemonById(id);
+            pokemons.add(pokemon);
+            print('Loaded Pokémon #$id: ${pokemon.name}');
+          } catch (e) {
+            print('Error loading Pokémon #$id: $e');
+            continue;
+          }
         }
-      }
 
-      print(
-          'Successfully loaded ${pokemons.length} Pokémon for generation $generation');
-      return pokemons;
+        // Guardar en cache
+        await _localStorage.cachePokemons(pokemons);
+
+        print(
+            'Successfully loaded ${pokemons.length} Pokémon for generation $generation');
+        return pokemons;
+      } else {
+        // Modo offline: filtrar del cache por generación
+        print('Offline mode: Filtering generation from cache');
+        final cachedPokemons = await _localStorage.getCachedPokemons();
+        final startId = _getGenerationStartId(generation);
+        final endId = _getGenerationEndId(generation);
+
+        return cachedPokemons.where((pokemon) {
+          return pokemon.id >= startId && pokemon.id <= endId;
+        }).toList();
+      }
     } catch (e) {
       throw Exception('Error loading generation $generation: $e');
+    }
+  }
+
+  Future<Pokemon> getPokemonDetail(String url) async {
+    try {
+      final connectivityResult = await Connectivity().checkConnectivity();
+      final bool isOnline = connectivityResult != ConnectivityResult.none;
+
+      if (isOnline) {
+        // Modo online
+        final response = await http.get(Uri.parse(url));
+
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body);
+          return Pokemon.fromJson(data);
+        } else {
+          throw Exception(
+              'Failed to load pokemon detail: ${response.statusCode}');
+        }
+      } else {
+        // Modo offline: buscar en cache por ID
+        final id = _extractIdFromUrl(url);
+        final cachedPokemon = await _localStorage.getCachedPokemon(id);
+        if (cachedPokemon != null) {
+          return cachedPokemon;
+        } else {
+          throw Exception('Pokémon not found in cache');
+        }
+      }
+    } catch (e) {
+      throw Exception('Error loading Pokémon detail: $e');
+    }
+  }
+
+  Future<Pokemon> getPokemonById(int id) async {
+    final connectivityResult = await Connectivity().checkConnectivity();
+    final bool isOnline = connectivityResult != ConnectivityResult.none;
+
+    if (isOnline) {
+      return await getPokemonDetail('$baseUrl/pokemon/$id');
+    } else {
+      final cachedPokemon = await _localStorage.getCachedPokemon(id);
+      if (cachedPokemon != null) {
+        return cachedPokemon;
+      } else {
+        throw Exception('Pokémon #$id not found in cache');
+      }
     }
   }
 
@@ -104,6 +211,7 @@ class PokemonService {
         method: (evolutionDetails?['trigger']['name'] as String?) ?? '',
         level: (evolutionDetails?['min_level'] as int?) ?? 0,
         item: (evolutionDetails?['item']?['name'] as String?) ?? '',
+        imageUrl: '',
       );
 
       evolutions.add(evolution);
@@ -122,26 +230,7 @@ class PokemonService {
     }
   }
 
-  Future<Pokemon> getPokemonDetail(String url) async {
-    try {
-      final response = await http.get(Uri.parse(url));
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return Pokemon.fromJson(data);
-      } else {
-        throw Exception(
-            'Failed to load pokemon detail: ${response.statusCode}');
-      }
-    } catch (e) {
-      throw Exception('Error loading Pokémon detail: $e');
-    }
-  }
-
-  Future<Pokemon> getPokemonById(int id) async {
-    return await getPokemonDetail('$baseUrl/pokemon/$id');
-  }
-
+  // Métodos para generaciones
   int _getGenerationStartId(int generation) {
     switch (generation) {
       case 1:

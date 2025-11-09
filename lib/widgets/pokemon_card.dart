@@ -1,5 +1,6 @@
 // lib/widgets/pokemon_card.dart
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../models/pokemon.dart';
 import '../constants/colors.dart';
 
@@ -24,45 +25,38 @@ class PokemonCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(8),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min, // Importante para evitar overflow
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // Número del Pokémon
               Text(
                 '#${pokemon.id.toString().padLeft(3, '0')}',
                 style: const TextStyle(
-                  fontSize: 10, // Reducido
+                  fontSize: 10,
                   color: Colors.grey,
                   fontWeight: FontWeight.bold,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(height: 4),
+              //const SizedBox(height: 4),
 
-              // Imagen del Pokémon
+              // Imagen del Pokémon con cache
               Center(
-                child: Container(
-                  height: 60, // Reducido
+                child: CachedNetworkImage(
+                  imageUrl: pokemon.imageUrl,
+                  height: 60,
                   width: 60,
-                  child: Image.network(
-                    pokemon.imageUrl,
-                    fit: BoxFit.contain,
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return const Center(
-                        child: CircularProgressIndicator(),
-                      );
-                    },
-                    errorBuilder: (context, error, stackTrace) {
-                      return const Icon(
-                        Icons.catching_pokemon,
-                        size: 40, // Reducido
-                        color: Colors.grey,
-                      );
-                    },
+                  fit: BoxFit.contain,
+                  placeholder: (context, url) => const Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                  errorWidget: (context, url, error) => const Icon(
+                    Icons.catching_pokemon,
+                    size: 40,
+                    color: Colors.grey,
                   ),
                 ),
               ),
@@ -71,10 +65,10 @@ class PokemonCard extends StatelessWidget {
               // Nombre del Pokémon
               Text(
                 _formatPokemonName(pokemon.name),
-                style: const TextStyle(
-                  fontSize: 12, // Reducido
-                  fontWeight: FontWeight.bold,
-                ),
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                textAlign: TextAlign.center,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -90,7 +84,6 @@ class PokemonCard extends StatelessWidget {
   }
 
   String _formatPokemonName(String name) {
-    // Capitalizar primera letra
     if (name.isEmpty) return name;
     return name[0].toUpperCase() + name.substring(1);
   }
@@ -98,23 +91,22 @@ class PokemonCard extends StatelessWidget {
   Widget _buildTypesRow(List<String> types) {
     return Row(
       children: types.take(2).map((type) {
-        // Limitar a 2 tipos máximo
         return Expanded(
           child: Container(
-            margin: const EdgeInsets.only(right: 2), // Reducido espacio
+            margin: const EdgeInsets.only(right: 2),
             padding: const EdgeInsets.symmetric(
-              horizontal: 4, // Reducido
-              vertical: 2, // Reducido
+              horizontal: 4,
+              vertical: 2,
             ),
             decoration: BoxDecoration(
               color: getTypeColor(type),
-              borderRadius: BorderRadius.circular(6), // Reducido
+              borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
               type.toUpperCase(),
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 8, // Reducido
+                fontSize: 8,
                 fontWeight: FontWeight.bold,
               ),
               textAlign: TextAlign.center,
