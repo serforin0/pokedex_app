@@ -46,27 +46,29 @@ Una aplicación móvil moderna de Pokédex desarrollada con Flutter que permite 
 
 ## 📦 Estructura del Proyecto
 
+📁 Estructura del Proyecto
 
-📦 lib/
-├── 🏷️ models/
-│   ├── pokemon.dart              # 🎯 Modelo principal de Pokémon
-│   └── pokemon_evolution.dart    # 🔄 Modelo de evoluciones
-├── 🌐 services/
-│   └── pokemon_service.dart      # 📡 Servicio para APIs de Pokémon
-├── 🧩 bloc/
+lib/
+├── models/
+│   ├── pokemon.dart              # Modelo principal de Pokémon
+│   └── pokemon_evolution.dart    # Modelo de evoluciones
+├── services/
+│   └── pokemon_service.dart      # Servicio para APIs de Pokémon
+├── bloc/
 │   └── pokemon_list/
-│       ├── pokemon_list_bloc.dart    # 🎮 Lógica de negocio
-│       ├── pokemon_list_event.dart   # 🎪 Eventos
-│       └── pokemon_list_state.dart   # 📊 Estados
-├── 📱 screens/
-│   ├── pokemon_list_screen.dart  # 📋 Pantalla de lista
-│   └── pokemon_detail_screen.dart # 🔍 Pantalla de detalles
-├── 🧩 widgets/
-│   ├── pokemon_card.dart         # 🃏 Widget de carta de Pokémon
-│   └── pokemon_card_skeleton.dart # 💀 Skeleton loading
-├── 🎨 constants/
-│   └── colors.dart               # 🎨 Colores por tipo de Pokémon
-└── 🚀 main.dart                  # ⚡ Punto de entrada
+│       ├── pokemon_list_bloc.dart    # Lógica de negocio
+│       ├── pokemon_list_event.dart   # Eventos
+│       └── pokemon_list_state.dart   # Estados
+├── screens/
+│   ├── pokemon_list_screen.dart      # Pantalla de lista
+│   └── pokemon_detail_screen.dart    # Pantalla de detalles
+├── widgets/
+│   ├── pokemon_card.dart             # Widget de carta de Pokémon
+│   └── pokemon_card_skeleton.dart    # Skeleton loading
+├── constants/
+│   └── colors.dart                   # Colores por tipo de Pokémon
+└── main.dart                         # Punto de entrada
+
 
 ## 🚀 Instalación y Uso
 
