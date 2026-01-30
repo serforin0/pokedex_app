@@ -49,3 +49,45 @@ UI (Screens/Widgets)
 ---
 
 ## 📦 Estructura del proyecto
+
+
+```
+lib/
+├── models/
+│ ├── pokemon.dart
+│ └── pokemon_evolution.dart
+├── services/
+│ └── pokemon_service.dart
+├── bloc/
+│ └── pokemon_list/
+│ ├── pokemon_list_bloc.dart
+│ ├── pokemon_list_event.dart
+│ └── pokemon_list_state.dart
+├── screens/
+│ ├── pokemon_list_screen.dart
+│ └── pokemon_detail_screen.dart
+├── widgets/
+│ ├── pokemon_card.dart
+│ └── pokemon_card_skeleton.dart
+├── constants/
+│ └── colors.dart
+└── main.dart
+```
+
+
+---
+
+## 🔌 APIs consumidas
+- Lista: `/pokemon?limit=20&offset=0`
+- Detalles: `/pokemon/{id}`
+- Evolución: `/evolution-chain/{id}`
+
+---
+
+## ▶️ Instalación y ejecución
+
+```bash
+git clone <url-del-repo>
+cd pokedex_app
+flutter pub get
+flutter run
